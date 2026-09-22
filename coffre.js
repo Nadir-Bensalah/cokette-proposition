@@ -85,6 +85,35 @@ const surveillerActivite = () => {
   window.addEventListener('pagehide', () => refermer(false));
 };
 
+/* --- Signal d'ouverture -------------------------------------------------
+   Au premier deverrouillage, un message part vers un canal ntfy prive.
+   Le marqueur reste dans le navigateur du lecteur : les relectures ne
+   redeclenchent rien. Tout echec est ignore en silence, la lecture prime. */
+
+const CANAL = 'cokette-zdkpi566f2';
+
+const signalerOuverture = () => {
+  try {
+    const cle = 'cokette-vu';
+    const premiere = !localStorage.getItem(cle);
+    if (premiere) localStorage.setItem(cle, new Date().toISOString());
+
+    const heure = new Date().toLocaleString('fr-FR',
+      { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+
+    fetch('https://ntfy.sh/' + CANAL, {
+      method: 'POST',
+      headers: {
+        'Title': premiere ? 'Rabaa a ouvert la proposition' : 'Rabaa relit la proposition',
+        'Priority': premiere ? 'high' : 'default',
+        'Tags': premiere ? 'tada' : 'eyes',
+      },
+      body: (premiere ? 'Premiere ouverture' : 'Nouvelle consultation') + ' \u00b7 ' + heure,
+      keepalive: true,
+    }).catch(() => {});
+  } catch (e) { /* stockage bloque ou reseau coupe : sans consequence */ }
+};
+
 /* --- Ouverture de la page ---------------------------------------------- */
 
 if (forme && window.crypto && window.crypto.subtle) {
@@ -104,6 +133,7 @@ if (forme && window.crypto && window.crypto.subtle) {
       champ.value = '';
       dire('');
 
+      signalerOuverture();
       if (typeof window.demarrerPage === 'function') window.demarrerPage();
       surveillerActivite();
       relancerMinuteur();
